@@ -1,0 +1,163 @@
+###week07_ex1_start_py
+# Statistics for Bulgaria
+mode, count = stats.mode(bulgaria)
+print('Bulgaria:\n',
+      f'Median = {np.median(bulgaria):.1f}\n',
+      f'Mode = {mode[0]:.1f}, appearing {count[0]:d} times ({100*count[0]/len(bulgaria):.1f}% of the time)\n',
+      f'Geometric mean = {stats.gmean(bulgaria):.2f}\n')
+
+# For example, calculate the Pearson correlation coefficient
+# between all pairs of countries
+countries = ['Germany', 'Denmark', 'Belgium', 'Bulgaria']
+
+pearson_coeffs = []
+
+for country1 in oil_data.T:
+    country1_coeffs = []
+    for country2 in oil_data.T:
+        # The coefficient is the first output of stats.pearsonr
+        country1_coeffs.append(np.round(stats.pearsonr(country1, country2)[0], 2))
+    
+    # Add all coeffs with country1 to the main array
+    pearson_coeffs.append(country1_coeffs)
+
+# Display the results in a table, highlight correlated columns
+colourmap = plt.cm.get_cmap('Greens')   # get a colourmap function to map colours to numbers
+colours = colourmap(pearson_coeffs)
+
+fig, ax = plt.subplots(1, 1, figsize=(7, 2))
+ax.table(cellText=pearson_coeffs,
+         rowLabels=countries,
+         colLabels=countries,
+         cellColours=colours,
+         loc='center',
+         cellLoc='center')
+ax.axis('tight')
+ax.axis('off')
+plt.show()
+
+# Germany and Denmark seem correlated, let's try to find a linear relationship
+fig, ax = plt.subplots(1, 1, figsize=(7, 5))
+ax.plot(germany, denmark, 'kx', label='Data points')
+ax.set_xlabel('Oil reserves for Germany')
+ax.set_ylabel('Oil reserves for Denmark')
+
+# We can create a linear regression object using stats.linregress
+regr = stats.linregress(germany, denmark)
+
+# Then we plot the line on the same graph
+x_values = np.arange(germany.min(), germany.max(), 100)
+y_values = x_values * regr.slope + regr.intercept
+ax.plot(x_values, y_values, 'r-', label=f'Linear fit (R^2 = {regr.rvalue**2:.2f})')
+
+ax.legend()
+plt.show()
+###week07_ex1_end
+
+###week07_ex2_start_md
+The objective function to minimise now gives the number of work hours in a week, given by $f(x_T, x_C) = 6x_T + 3x_C$. Constraint 1 is removed, and a new constraint is the minimum profit:
+$$
+30x_T + 10x_C \geq 150.
+$$
+
+Constraint 3 becomes, with the new available storage space:
+$$
+x_C/4 + x_T \leq 8.
+$$
+
+If we add the extra constraint on the number of chairs and tables, constraint 2 is replaced by an equality:
+$$
+x_C = 3x_T.
+$$
+###week07_ex2_switch_py
+from scipy.optimize import linprog
+
+# A still must be a matrix (here, with a single row)
+A = np.array([[-30, -10],
+              [1, 0.25]], dtype=float)
+
+b = np.array([-150, 8], dtype=float)
+c = np.array([6, 3], dtype=float)
+
+# We need to provide equality constraints separately
+A_eq = np.array([[3, -1]], dtype=float)
+b_eq = np.array([0], dtype=float)
+
+solution = linprog(c, A, b, A_eq, b_eq)
+results = A @ solution.x
+print(f'The optimal strategy is to make {solution.x[0]:.2f} tables',
+      f'and {solution.x[1]:.2f} chairs every week (on average), which',
+      f'takes {solution.fun:.1f} hours per week.',
+      f'The total profit is {-results[0]:.2f}.',
+      f'The furniture takes up {100*results[1]/8:.1f}% of storage space.')
+###week07_ex2_end
+
+###week07_ex3_start_py
+ger = oil_data.loc[:, 'Germany'] < 20000
+bel = oil_data.loc[:, 'Belgium'] > 4000
+print(oil_data.loc[ger & bel, 'Denmark'])
+###week07_ex3_end
+
+###week07_ex4_start_py
+import numpy as np
+import scipy.stats as st
+import matplotlib.pyplot as plt
+
+# Read in our data
+randd = pd.read_csv('r_and_d_spend.csv')
+print(randd)
+
+# Plot the data for all countries
+fig, ax = plt.subplots(2, 4, figsize=(12, 6))
+i = 0
+j = 0
+nb_plots = 7
+plot_index = 0
+
+while plot_index < nb_plots:
+    country = randd.columns[plot_index + 1]
+    
+    # Plot the data points
+    ax[i, j].plot(randd['Year'], randd[country], 'ko', label=country)
+    
+    # Linear regression
+    reg = st.linregress(randd['Year'], randd[country])
+    line = randd['Year'] * reg.slope + reg.intercept
+    
+    ax[i, j].plot(randd['Year'], line, 'r-', label='Linear fit')
+    
+    # Axes properties
+    ax[i, j].legend(loc='upper left')
+    if i == 1:
+        ax[i, j].set_xlabel('Year')
+    if j == 0:
+        ax[i, j].set_ylabel('% of GDP')
+
+    plot_index += 1
+    j += 1
+    # Move to the next row
+    if j > 3:
+        j = 0
+        i += 1
+
+ax[1, 3].axis('off')
+plt.show()
+###week07_ex4_end
+
+###week07_ex5_start_py
+fig, ax = plt.subplots(figsize=(9, 6))
+
+years = (randd['Year'] >= 2000) & (randd['Year'] <= 2010)
+country = randd.columns[1:]
+colours = plt.cm.get_cmap('rainbow')
+
+for i in range(7):
+    ax.plot(randd.loc[years, 'Year'], randd.loc[years, country[i]], 'o', color=colours(i/7), label=country[i])
+
+ax.set_title('R & D spend in % of GDP')
+ax.set_xlabel('Year')
+ax.set_ylabel('% of GDP')
+ax.set_ylim([0, 4])
+ax.legend(loc='upper left')
+plt.show()
+###week07_ex5_end
